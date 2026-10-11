@@ -409,6 +409,7 @@ export function install(rt) {
       for (const item of listed) if (item.blank !== true) targets.set(item.sessionId, item.projections?.asOfSeq)
       for (const sessionId of owners.keys()) if (!targets.has(sessionId)) targets.set(sessionId, undefined)
       const addresses = new Map(listed.map(item => [item.sessionId, addressOf(item)]))
+      const failed = []
       await eachLimited([...targets], SCAN_PARALLEL, async ([sessionId, asOfSeq]) => {
         const address = addresses.has(sessionId) ? addresses.get(sessionId) : { kind: 'session', sessionId }
         if (address === undefined) return
@@ -418,9 +419,19 @@ export function install(rt) {
         } catch (error) {
           if (unreadable.has(sessionId)) return
           unreadable.add(sessionId)
-          rt.warn('ds-bot: usage could not read %s: %s', sessionId, error)
+          failed.push({ sessionId, error })
         }
       })
+      // A store can hold hundreds of Sessions that never become readable: a subagent
+      // whose parent is gone, an artifact DSH will not migrate. One line per scan keeps
+      // them out of stderr and the diagnostics file; a lone failure still names its
+      // Session, which is the one a reader can act on.
+      if (failed.length === 1) {
+        rt.warn('ds-bot: usage could not read %s: %s', failed[0].sessionId, failed[0].error)
+      } else if (failed.length > 1) {
+        failed.sort((a, b) => (a.sessionId < b.sessionId ? -1 : 1))
+        rt.warn('ds-bot: usage could not read %d Sessions, starting with %s: %s', failed.length, failed[0].sessionId, failed[0].error)
+      }
     })().finally(() => {
       scannedAt = Date.now()
       scanning = undefined

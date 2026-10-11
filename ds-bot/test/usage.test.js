@@ -228,3 +228,18 @@ test('a subagent Session is read through its parent, even a parent that is gone;
   assert.equal(pages.filter(sessionId => sessionId === 's-orphan').length, 1)
   assert.deepEqual(unread(), ['s-broken'])
 })
+
+test('a scan that meets many unreadable Sessions reports them once, with the count', async (t) => {
+  const extra = Array.from({ length: 5 }, (_, index) => ({ sessionId: `s-bad-${index}`, projections: { kind: 'cached', asOfSeq: 1, values: {} } }))
+  const { call, stop, warnings } = start(undefined, { listedExtra: extra })
+  t.after(stop)
+  const view = (await call('usage', { timeZone: 'Asia/Shanghai' })).value
+  // The readable Sessions are still counted; the unreadable ones cost one line, not five.
+  assert.equal(totals(view)['Chief/chat'], 160 + 220 + 10)
+  const unread = warnings.filter(([template]) => template.includes('usage could not read'))
+  assert.equal(unread.length, 1)
+  const [template, count, firstId] = unread[0]
+  assert.match(template, /usage could not read %d Sessions, starting with %s/)
+  assert.equal(count, 5)
+  assert.equal(firstId, 's-bad-0')
+})

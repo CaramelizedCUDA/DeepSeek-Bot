@@ -7,6 +7,7 @@ All notable changes to DS Bot are listed here. The format follows [Keep a Change
 ### Fixed
 
 - Group the first model choices by provider, so models with the same name can be distinguished. Providers with the same display name also show their provider IDs.
+- Report the Sessions a usage scan cannot read as one line with their count, instead of one line per Session, so a store that holds many of them no longer floods stderr and the diagnostics file.
 
 ## [0.1.0] - 2026-10-10
 
