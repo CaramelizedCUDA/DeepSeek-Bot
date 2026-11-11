@@ -4,6 +4,10 @@ All notable changes to DS Bot are listed here. The format follows [Keep a Change
 
 ## [Unreleased]
 
+### Fixed
+
+- Windows: a local agent CLI is registered only when the name on `PATH` is a file. A folder that shares the CLI name (for example a data folder `Devin` beside `devin.exe`) was taken for the executable and hid the real CLI.
+
 ## [0.3.5] - 2026-11-11
 
 ### Added

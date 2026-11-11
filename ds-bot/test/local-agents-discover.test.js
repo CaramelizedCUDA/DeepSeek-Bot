@@ -89,3 +89,22 @@ test('finding a CLI never waits on npm, and npm\'s global folder joins in the ba
   await refresh
   assert.equal(findExecutable('dsb-fake-agent'), join(prefix, 'bin', 'dsb-fake-agent'))
 })
+
+// On Windows a data folder next to a CLI can share its name ('Devin' beside
+// 'devin.exe'); on every platform a name that exists but is not a file must not
+// win the lookup, or the real CLI behind it is shadowed.
+test('a directory that shares a CLI name is not the CLI', (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'dsb-isfile-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const decoy = join(root, 'decoy')
+  const real = join(root, 'real')
+  mkdirSync(join(decoy, 'dsb-fake-agent'), { recursive: true })
+  mkdirSync(real, { recursive: true })
+  const file = join(real, process.platform === 'win32' ? 'dsb-fake-agent.exe' : 'dsb-fake-agent')
+  writeFileSync(file, '')
+  const { PATH } = process.env
+  process.env.PATH = [decoy, real].join(delimiter)
+  t.after(() => { process.env.PATH = PATH })
+
+  assert.equal(findExecutable('dsb-fake-agent'), file)
+})

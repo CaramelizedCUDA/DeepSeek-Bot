@@ -2,7 +2,7 @@
 // login-shell PATH plus the usual install folders, and an environment that
 // keeps their own sign-in but leaks nothing of ours.
 import { execFile, spawn } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { delimiter, join, win32 } from 'node:path'
 
@@ -57,6 +57,17 @@ export function refreshSearchDirs() {
 }
 
 const WIN_EXT = ['.cmd', '.exe', '.bat', '']
+
+// A name that merely exists is not an executable: a directory or a socket
+// passes existsSync and fails at spawn time.
+const isFile = (path) => {
+  try {
+    return statSync(path).isFile()
+  } catch {
+    return false
+  }
+}
+
 const candidates = (name) => (process.platform === 'win32' ? WIN_EXT.map(ext => `${name}${ext}`) : [name])
 
 // Every folder a CLI may hide in, in lookup order.
@@ -81,12 +92,12 @@ function searchDirs() {
 export function findExecutable(name) {
   if (name.includes('/') || name.includes('\\')) {
     const path = name.startsWith('~') ? join(homedir(), name.slice(1)) : name
-    return existsSync(path) ? path : undefined
+    return isFile(path) ? path : undefined
   }
   for (const dir of searchDirs()) {
     for (const file of candidates(name)) {
       const path = join(dir, file)
-      if (existsSync(path)) return path
+      if (isFile(path)) return path
     }
   }
   return undefined
